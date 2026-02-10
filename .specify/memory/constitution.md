@@ -1,55 +1,52 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Cloud-Native Todo AI Chatbot Phase IV: Local Kubernetes Deployment Constitution
+
+<!-- Sync Impact Report:
+Version change: 0.0.0 (initial) → 1.0.0
+List of modified principles: All new principles introduced.
+Added sections: Core Principles now includes 7 distinct principles. Governance expanded.
+Removed sections: Generic SECTION_2_NAME/CONTENT, SECTION_3_NAME/CONTENT.
+Templates requiring updates:
+- .specify/templates/plan-template.md ⚠ pending
+- .specify/templates/spec-template.md ⚠ pending
+- .specify/templates/tasks-template.md ⚠ pending
+- README.md ⚠ pending
+Follow-up TODOs: TODO(RATIFICATION_DATE): Confirm original adoption date
+-->
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### Principle 1: Spec-Driven & Autonomous Execution
+Strictly follow the provided `sp.specify`, `sp.plan`, and `sp.tasks` documents. Do not introduce assumptions beyond the approved specification. Do not perform manual coding; all artifacts must be generated via AI agents. This upholds the core tenets of Spec-Driven Development and Agentic Dev Stack execution.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### Principle 2: AI-Assisted Tooling Preference
+Prefer AI-assisted tools where available: Docker AI Agent (Gordon) for containerization, `kubectl-ai` for Kubernetes operations, and `kagent` for AIOps and optimization. If a required tool or capability is unavailable, fall back to spec-approved alternatives without violating constraints.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### Principle 3: Local Minikube Compatibility
+Ensure all actions and generated artifacts are fully compatible with local Minikube execution, supporting a local-first, cost-free infrastructure.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### Principle 4: Clarity, Reproducibility, and Simplicity
+Maintain clarity, reproducibility, and simplicity in all processes and generated artifacts. Strive for straightforward solutions that are easy to understand and replicate.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Principle 5: Stage-Gate Validation
+Validate outputs at each stage before proceeding to the next. This ensures early detection of issues and maintains the integrity of the development pipeline.
 
-### [PRINCIPLE_6_NAME]
+### Principle 6: Transparent Decision Logging
+Log all significant decisions and their underlying reasoning in a concise, professional manner. This ensures auditability and explainability of AI agent actions.
 
-
-[PRINCIPLE__DESCRIPTION]
-
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
-
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Principle 7: Hackathon Optimization
+Optimize all development and operational workflows for hackathon evaluation, ensuring auditability and clear explainability of the implemented solution.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+The Autonomous AI DevOps and Infrastructure Agent operates under the guiding principles of Spec-Driven Development, Agentic Dev Stack execution, and Zero manual intervention. The infrastructure strategy is explicitly Local-first and cost-free.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Procedure**: Amendments to this constitution require a formal proposal, review by a designated architect or lead agent, and documented approval. All changes must be versioned.
+
+**Versioning Policy**: This constitution follows Semantic Versioning (MAJOR.MINOR.PATCH).
+*   **MAJOR**: Backward-incompatible governance/principle removals or redefinitions.
+*   **MINOR**: New principle/section added or materially expanded guidance.
+*   **PATCH**: Clarifications, wording, typo fixes, non-semantic refinements.
+
+**Compliance Review**: Compliance with this constitution will be periodically reviewed. Any deviations must be justified and documented through the ADR process.
+
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): Confirm original adoption date | **Last Amended**: 2026-02-09
