@@ -1,6 +1,6 @@
-# Phase III: Todo AI Chatbot
+# Phase IV: Todo AI Chatbot with Local Kubernetes Deployment
 
-This project implements an AI-powered chatbot that manages todo tasks through natural language, following a strict Spec-Driven Development and Agentic Dev Stack workflow.
+This project implements an AI-powered chatbot that manages todo tasks through natural language, following a strict Spec-Driven Development and Agentic Dev Stack workflow. This phase focuses on containerization and local Kubernetes deployment using Minikube and Helm charts.
 
 ## Project Structure
 
@@ -12,7 +12,8 @@ This project implements an AI-powered chatbot that manages todo tasks through na
 │   ├── .env.example          # Example environment variables for backend
 │   ├── requirements.txt      # Python dependencies for backend
 │   ├── main.py               # Main FastAPI application
-│   └── models.py             # SQLModel database models
+│   ├── models.py             # SQLModel database models
+│   └── Dockerfile            # Dockerfile for backend application
 ├── frontend/                 # Next.js frontend (basic chat UI)
 │   ├── public/
 │   ├── src/
@@ -20,7 +21,11 @@ This project implements an AI-powered chatbot that manages todo tasks through na
 │   │   └── styles/           # Global styles (Tailwind CSS)
 │   ├── .env.local.example    # Example environment variables for frontend
 │   ├── package.json          # Node.js dependencies for frontend
+│   ├── Dockerfile            # Dockerfile for frontend application
 │   └── ...                   # Other Next.js config files
+├── helm/                     # Helm charts for Kubernetes deployment
+│   ├── backend/              # Helm chart for the backend application
+│   └── frontend/             # Helm chart for the frontend application
 ├── mcp_server/               # Model Context Protocol (MCP) server with tools
 │   ├── requirements.txt      # Python dependencies for MCP server
 │   ├── main.py               # FastMCP application to expose tools
@@ -30,21 +35,29 @@ This project implements an AI-powered chatbot that manages todo tasks through na
 │   │   ├── spec.md           # Detailed project specification
 │   │   ├── architecture.md   # High-level architecture diagram
 │   │   └── plan.md           # Implementation plan and task breakdown
+│   ├── phase4-kubernetes-deployment/ # Specs for Kubernetes deployment
+│   │   ├── plan.md           # Plan for Kubernetes deployment
+│   │   └── tasks.md          # Tasks for Kubernetes deployment
 │   └── ...
 └── README.md                 # Project README (this file)
 ```
 
 ## Mandatory Tech Stack
 
-*   **Frontend**: Next.js (as placeholder for OpenAI ChatKit)
+*   **Frontend**: Next.js
 *   **Backend**: Python FastAPI
 *   **AI Framework**: OpenAI Agents SDK
 *   **MCP Server**: Official MCP SDK (via `fastmcp`)
 *   **ORM**: SQLModel
 *   **Database**: Neon Serverless PostgreSQL
 *   **Authentication**: Better Auth (stubbed)
+*   **Containerization**: Docker (Docker Desktop)
+*   **Orchestration**: Kubernetes (Minikube)
+*   **Package Manager**: Helm Charts
 
-## Setup and Running the Project
+## Setup and Running the Project (Kubernetes Deployment)
+
+This section outlines how to deploy the Todo AI Chatbot on a local Kubernetes cluster using Minikube and Helm.
 
 ### 1. Prerequisites
 
@@ -52,101 +65,89 @@ This project implements an AI-powered chatbot that manages todo tasks through na
 *   Node.js (LTS recommended) & npm
 *   A Neon PostgreSQL database instance.
 *   An OpenAI API Key.
+*   **Docker Desktop**: Required for building and managing Docker images.
+*   **Minikube**: For running a local Kubernetes cluster.
+    *   **Installation**: Follow the official Minikube installation guide: [https://minikube.sigs.k8s.io/docs/start/](https://minikube.sigs.k8s.io/docs/start/)
+*   **kubectl**: Kubernetes command-line tool. (Usually installed with Minikube)
+*   **Helm**: Kubernetes package manager.
+    *   **Installation**: Follow the official Helm installation guide: [https://helm.sh/docs/intro/install/](https://helm.sh/docs/intro/install/)
 
-### 2. Backend Setup
+### 2. Configure Environment Variables
 
-1.  **Navigate to the `backend` directory:**
-    ```bash
-    cd backend
-    ```
-2.  **Create a `.env` file:**
-    Copy the contents of `.env.example` to a new file named `.env` and fill in your database URL and OpenAI API Key.
-    ```bash
-    cp .env.example .env
-    ```
-    Example `.env` content:
+Create `.env` files for your backend and frontend as specified in their respective directories (`backend/.env.example` and `frontend/.env.local.example`).
+
+*   **`backend/.env` content**:
     ```
     DATABASE_URL="postgresql+psycopg2://[USER]:[PASSWORD]@[ENDPOINT_HOSTNAME]/[DATABASE_NAME]?sslmode=require"
     OPENAI_API_KEY="sk-your-openai-key"
-    MCP_SERVER_URL="http://localhost:8001" # Default URL for the FastMCP server
+    MCP_SERVER_URL="http://mcp-server-service:8001" # Internal Kubernetes Service URL
     ```
-3.  **Install Python dependencies:**
+    *(Note: `MCP_SERVER_URL` is updated for internal Kubernetes communication)*
+
+*   **`frontend/.env.local` content**:
+    ```
+    NEXT_PUBLIC_API_BASE_URL="http://backend-service:8000" # Internal Kubernetes Service URL
+    ```
+    *(Note: `NEXT_PUBLIC_API_BASE_URL` is updated for internal Kubernetes communication)*
+
+### 3. Build and Push Docker Images
+
+You need to build Docker images for both backend and frontend and push them to a container registry (e.g., Docker Hub, Google Container Registry, etc.). Replace `your-dockerhub-username` with your actual username.
+
+1.  **Build Backend Image:**
     ```bash
-    pip install -r requirements.txt
+    docker build -t your-dockerhub-username/todo-backend:latest -f backend/Dockerfile .
     ```
-4.  **Run Alembic migrations:**
+2.  **Push Backend Image:**
     ```bash
-    alembic upgrade head
+    docker push your-dockerhub-username/todo-backend:latest
     ```
-    *Note: If you encounter errors during migration, ensure your `DATABASE_URL` is correct and accessible.*
-5.  **Run the FastAPI backend:**
+3.  **Build Frontend Image:**
     ```bash
-    uvicorn main:app --reload --port 8000
+    docker build -t your-dockerhub-username/todo-frontend:latest -f frontend/Dockerfile .
     ```
-    The backend API will be available at `http://localhost:8000`.
-
-### 3. MCP Server Setup
-
-1.  **Navigate to the `mcp_server` directory:**
+4.  **Push Frontend Image:**
     ```bash
-    cd mcp_server
+    docker push your-dockerhub-username/todo-frontend:latest
     ```
-2.  **Install Python dependencies:**
+
+### 4. Start Minikube
+
+Ensure Docker Desktop is running.
+```bash
+minikube start
+```
+
+### 5. Deploy with Helm
+
+1.  **Update Helm `values.yaml`**:
+    Before deploying, update the `image.repository` and `image.tag` fields in `helm/backend/values.yaml` and `helm/frontend/values.yaml` to point to your pushed Docker images.
+
+    Example `helm/backend/values.yaml` update:
+    ```yaml
+    image:
+      repository: your-dockerhub-username/todo-backend
+      tag: "latest"
+    ```
+    Do the same for `helm/frontend/values.yaml`.
+
+2.  **Install Backend Helm Chart:**
     ```bash
-    pip install -r requirements.txt
+    helm install todo-backend helm/backend
     ```
-3.  **Run the FastMCP server:**
+3.  **Install Frontend Helm Chart:**
     ```bash
-    fastmcp run main:app --port 8001
+    helm install todo-frontend helm/frontend
     ```
-    The MCP server will be available at `http://localhost:8001`.
+    *(Note: You might need to adjust service types (e.g., `NodePort` or `LoadBalancer`) in `helm/frontend/values.yaml` and `helm/backend/values.yaml` to access the services from outside the cluster, or use `minikube service todo-frontend` to get the URL.)*
 
-### 4. Frontend Setup
+### 6. Access the Application
 
-1.  **Navigate to the `frontend` directory:**
+*   To get the URL of the frontend service in Minikube:
     ```bash
-    cd frontend
+    minikube service todo-frontend
     ```
-2.  **Create a `.env.local` file:**
-    Copy the contents of `.env.local.example` (you might need to create this file based on backend `.env.example` for `NEXT_PUBLIC_OPENAI_DOMAIN_KEY` if ChatKit was used, but for now we'll use `NEXT_PUBLIC_API_BASE_URL`).
-    ```bash
-    cp .env.local.example .env.local
-    ```
-    Example `frontend/.env.local` content:
-    ```
-    NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
-    ```
-3.  **Install Node.js dependencies:**
-    ```bash
-    npm install
-    ```
-4.  **Run the Next.js frontend:**
-    ```bash
-    npm run dev
-    ```
-    The frontend will be available at `http://localhost:3000`.
-
-## API Endpoints
-
-### Backend (FastAPI)
-
-*   `GET /health`: Health check.
-*   `POST /api/{user_id}/chat`: Main chat endpoint for AI interaction.
-
-### MCP Server (FastMCP)
-
-*   Exposes tools: `add_task`, `list_tasks`, `complete_task`, `delete_task`, `update_task`.
-
-## How to Interact
-
-1.  Start the Backend, MCP Server, and Frontend in separate terminal windows.
-2.  Open your browser to `http://localhost:3000`.
-3.  Use the chat interface to interact with the Todo AI Chatbot. Example commands:
-    *   "Add a new task: Buy groceries"
-    *   "List my pending tasks"
-    *   "Complete task 1" (assuming task ID 1 exists)
-    *   "Update task 2 title to: Read a book"
-    *   "Delete task 3"
+    This command will open the frontend in your browser or provide you with the access URL.
 
 ## Deliverables Completed
 
@@ -159,4 +160,8 @@ This project implements an AI-powered chatbot that manages todo tasks through na
 7.  SQLModel models (`backend/models.py`)
 8.  Alembic migrations (`backend/migrations/`)
 9.  Env examples (`backend/.env.example`, `frontend/.env.local.example`)
-10. README (`README.md`)
+10. Backend Dockerfile (`backend/Dockerfile`)
+11. Frontend Dockerfile (`frontend/Dockerfile`)
+12. Backend Helm Chart (`helm/backend/`)
+13. Frontend Helm Chart (`helm/frontend/`)
+14. README (`README.md`)
