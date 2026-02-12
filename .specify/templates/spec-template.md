@@ -100,6 +100,10 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+## Constitutional Constraints
+
+*NOTE: While this specification defines functional requirements, the implementation is bound by the non-negotiable principles defined in the [Project Constitution](/.specify/memory/constitution.md). All solutions must adhere to the mandated technology stack, event-driven architecture, Dapr abstractions, and other core principles.*
+
 ## Success Criteria *(mandatory)*
 
 <!--

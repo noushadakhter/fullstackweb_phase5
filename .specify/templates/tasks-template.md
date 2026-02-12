@@ -56,20 +56,20 @@ description: "Task list template for feature implementation"
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented. These tasks align with the project constitution.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Configure Dapr components for Pub/Sub (Kafka) and State (Redis).
+- [ ] T005 [P] Define initial event schemas for cross-service communication (e.g., `TaskCreated`, `UserRegistered`).
+- [ ] T006 [P] Set up the base project structure for a new microservice (API, Service, Domain, Infra layers).
+- [ ] T007 Implement shared authentication logic accessible via Dapr service invocation.
+- [ ] T008 Configure structured logging and health check endpoints for a service.
+- [ ] T009 Set up environment configuration to load secrets from the Dapr secret store.
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready - user story implementation can now begin in parallel.
 
 ---
 

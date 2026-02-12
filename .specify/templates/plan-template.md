@@ -29,9 +29,16 @@
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: The plan must not violate any of these non-negotiable principles.*
 
-[Gates determined based on constitution file]
+- [ ] **Tech Stack**: Does the plan adhere strictly to the mandatory technology constraints (FastAPI, SQLModel, PostgreSQL, Python 3.11+, Docker, Kubernetes)?
+- [ ] **Dapr Abstraction**: Does the plan ensure all infrastructure interactions (pub/sub, state, secrets) are performed exclusively through the Dapr sidecar API?
+- [ ] **Event-Driven**: Does the design use asynchronous events for all cross-service communication, avoiding direct DB or API dependencies?
+- [ ] **Microservice Boundaries**: Is the proposed work clearly isolated within its designated service boundary, with no shared business logic?
+- [ ] **Cloud Portability**: Will the resulting artifacts run on Minikube and cloud Kubernetes providers without code changes?
+- [ ] **Observability**: Does the plan include provisions for structured logging, health endpoints, and distributed tracing?
+- [ ] **Security**: Are all secrets and credentials managed via a secret store, with no hardcoded values?
+- [ ] **Code Quality**: Does the plan account for mandatory async I/O, type hinting, and a layered architecture?
 
 ## Project Structure
 

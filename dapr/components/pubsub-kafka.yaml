@@ -1,0 +1,17 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub-broker
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  - name: brokers
+    value: "kafka:9092"
+  - name: authRequired
+    value: "false"
+  - name: consumerID
+    value: "{app-id}" # Lets Dapr create a consumer group per app
+scopes:
+  - tasks-service
+  - api-gateway

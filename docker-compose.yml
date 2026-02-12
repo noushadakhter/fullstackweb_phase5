@@ -1,64 +1,129 @@
+version: '3.8'
+
 services:
-  db:
+  # Infrastructure
+  postgres:
     image: postgres:16-alpine
-    container_name: tasks-db
+    container_name: postgres-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: tasks_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U user"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: tasks-backend
+  redis:
+    image: redis:7-alpine
+    container_name: redis-state
+    ports:
+      - "6379:6379"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/tasks_db
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-your-secret-key-change-in-production}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
-      JWT_ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_DAYS: 7
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  # Dapr Sidecars
+  api-gateway-dapr:
+    image: "daprio/daprd:latest"
+    container_name: api-gateway-dapr
+    command:
+      - "./daprd"
+      - "-app-id"
+      - "api-gateway"
+      - "-app-port"
+      - "8000"
+      - "-components-path"
+      - "/components"
+    volumes:
+      - "./dapr/components/:/components"
+    depends_on:
+      - api-gateway
+    network_mode: "service:api-gateway"
+
+  tasks-service-dapr:
+    image: "daprio/daprd:latest"
+    container_name: tasks-service-dapr
+    command:
+      - "./daprd"
+      - "-app-id"
+      - "tasks-service"
+      - "-app-port"
+      - "8001"
+      - "-components-path"
+      - "/components"
+    volumes:
+      - "./dapr/components/:/components"
+    depends_on:
+      - tasks-service
+    network_mode: "service:tasks-service"
+
+  # Application Services
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - /app/.venv
     depends_on:
-      db:
+      - kafka
+    restart: on-failure
+
+  tasks-service:
+    build:
+      context: ./services/tasks-service
+      dockerfile: Dockerfile
+    container_name: tasks-service
+    ports:
+      - "8001:8001" # Exposing a different port for internal communication
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/tasks_db"
+      # Other secrets will be loaded via Dapr
+    depends_on:
+      postgres:
         condition: service_healthy
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      kafka:
+        condition: service_started
+    restart: on-failure
 
   frontend:
     build:
-      context: ./frontend
+      context: ./services/frontend
       dockerfile: Dockerfile
-    container_name: tasks-frontend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-your-secret-key-change-in-production}
+    container_name: frontend
     ports:
       - "3001:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/v1
     depends_on:
-      - backend
-    command: npm run dev
+      - api-gateway
+    restart: on-failure
 
 volumes:
   postgres_data:

@@ -1,0 +1,160 @@
+import os
+import json
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import Session, select
+from uuid import UUID
+from typing import List, Optional
+
+import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
+
+# Project-specific imports
+from db import get_session
+from models import User, Conversation, Message
+from schemas import ChatMessage, ChatResponse
+from auth import get_current_user
+import mcp_server # Added this import statement
+
+# --- Gemini Configuration ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is not set")
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Define the tools by pointing to the functions in mcp_server
+# The Gemini SDK will automatically inspect the function signatures and docstrings
+available_tools = {
+    "create_todo": mcp_server.create_todo,
+    "list_todos": mcp_server.list_todos,
+    "update_todo": mcp_server.update_todo,
+    "mark_complete": mcp_server.mark_complete,
+    "delete_todo": mcp_server.delete_todo,
+}
+
+# System prompt for the AI agent
+SYSTEM_PROMPT = """
+You are a world-class Todo Manager assistant. Your name is 'TaskBot'.
+You are operating within a strict, tool-based environment.
+You MUST NOT perform any action outside of the provided tools.
+You are conversational, friendly, and helpful, but always precise.
+
+Your available tools are:
+- `create_todo`: Use when a user wants to add a new todo. It takes a `title` and an optional `description`.
+- `list_todos`: Use when a user asks to see their todos.
+- `update_todo`: Use when a user wants to change an existing todo. It can update the `title` and/or `description`.
+- `mark_complete`: Use when a user wants to mark a todo as done or not done.
+- `delete_todo`: Use when a user wants to remove a todo.
+
+When you perform an action, confirm it clearly. For example: "Okay, I've added 'Buy milk' to your list." or "Done! I've marked 'Finish report' as complete."
+If a user asks for something you cannot do, politely decline and state your purpose. For example: "I can only help you manage your todos. I can't set reminders or browse the web."
+Always be aware of the user you are talking to and ensure all actions are for them.
+"""
+
+# Initialize the Gemini Model with tools
+gemini_model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro-latest",  # Or another model that supports tool use
+    tools=list(available_tools.values()),
+    system_instruction=SYSTEM_PROMPT,
+    generation_config=GenerationConfig(temperature=0.7)
+)
+
+router = APIRouter()
+
+def _convert_db_history_to_gemini(db_messages: List[Message]) -> List[dict]:
+    """Converts database message history to Gemini's chat history format."""
+    history = []
+    for msg in db_messages:
+        role = "user" if msg.role == "user" else "model"
+        history.append({"role": role, "parts": [{"text": msg.content}]})
+    return history
+
+@router.post("/", response_model=ChatResponse)
+async def chat_endpoint(
+    chat_message: ChatMessage,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    user_id = current_user.id
+    conversation_id = chat_message.conversation_id
+    user_message_content = chat_message.message
+
+    # --- 1. Load or Create Conversation ---
+    conversation: Optional[Conversation] = None
+    if conversation_id:
+        conversation = session.get(Conversation, conversation_id)
+        if not conversation or conversation.owner_id != user_id:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    else:
+        conversation = Conversation(owner_id=user_id)
+        session.add(conversation)
+        session.commit()
+        session.refresh(conversation)
+        conversation_id = conversation.id
+
+    # --- 2. Load History and Store User Message ---
+    db_history = session.exec(
+        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
+    ).all()
+    
+    user_db_message = Message(conversation_id=conversation_id, role="user", content=user_message_content)
+    session.add(user_db_message)
+    session.commit()
+    session.refresh(user_db_message)
+
+    # --- 3. Interact with Gemini ---
+    gemini_history = _convert_db_history_to_gemini(db_history)
+    chat = gemini_model.start_chat(history=gemini_history)
+    
+    # Send the user's message to the model
+    response = chat.send_message(user_message_content)
+
+    # --- 4. Handle Tool Calls ---
+    while response.candidates[0].content.parts[0].function_call:
+        function_call = response.candidates[0].content.parts[0].function_call
+        function_name = function_call.name
+        
+        if function_name not in available_tools:
+             response = chat.send_message(
+                [{"function_response": {
+                    "name": function_name, 
+                    "response": {"result": f"Error: Tool '{function_name}' not found."}
+                }}]
+             )
+             continue
+
+        tool_function = available_tools[function_name]
+        tool_args = {key: value for key, value in function_call.args.items()}
+        # IMPORTANT: Inject the user_id into the arguments for the tool
+        tool_args['user_id'] = user_id
+        
+        try:
+            # Execute the tool function
+            tool_result = tool_function(**tool_args)
+            
+            # Send the result back to the model
+            response = chat.send_message(
+                 [{"function_response": {
+                     "name": function_name, 
+                     "response": {"result": json.dumps(tool_result)}
+                 }}]
+            )
+        except Exception as e:
+            # Handle any errors during tool execution
+            response = chat.send_message(
+                 [{"function_response": {
+                     "name": function_name, 
+                     "response": {"result": f"Error executing tool: {str(e)}"}
+                 }}]
+            )
+
+    # --- 5. Get Final Response and Store It ---
+    final_response_text = response.text
+    
+    assistant_db_message = Message(
+        conversation_id=conversation_id, role="assistant", content=final_response_text
+    )
+    session.add(assistant_db_message)
+    session.commit()
+    session.refresh(assistant_db_message)
+
+    return ChatResponse(conversation_id=conversation_id, response=final_response_text)
