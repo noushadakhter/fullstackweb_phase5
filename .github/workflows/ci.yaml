@@ -1,0 +1,78 @@
+name: CI Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Build and push Python services ---
+      - name: Build and Push API Gateway Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/api-gateway
+          push: true
+          tags: ghcr.io/${{ github.repository }}/api-gateway:latest
+
+      - name: Build and Push Tasks Service Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/tasks-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/tasks-service:latest
+
+      - name: Build and Push Notification Service Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/notification-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/notification-service:latest
+
+      - name: Build and Push Audit Service Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/audit-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/audit-service:latest
+
+      - name: Build and Push WebSocket Service Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/websocket-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/websocket-service:latest
+
+      - name: Build and Push Recurring Task Service Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/recurring-task-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/recurring-task-service:latest
+
+      # --- Build and push Frontend service ---
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./services/frontend
+          push: true
+          tags: ghcr.io/${{ github.repository }}/frontend:latest

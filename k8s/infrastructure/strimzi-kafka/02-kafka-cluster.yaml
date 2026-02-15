@@ -1,0 +1,36 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: taskflow-kafka
+  namespace: kafka # Ensure this matches the namespace where Strimzi is installed
+spec:
+  kafka:
+    replicas: 1
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false # Not using TLS for simplicity in this example
+        authentication:
+          type: scram-sha512 # Example authentication, could be 'none' for local dev
+      - name: external
+        port: 9094
+        type: nodeport # Or LoadBalancer for cloud
+        tls: false
+        authentication:
+          type: scram-sha512 # Example authentication
+    storage:
+      type: ephemeral # Or persistent-claim for production
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      log.message.format.version: "2.8"
+      inter.broker.protocol.version: "2.8"
+  zookeeper:
+    replicas: 1
+    storage:
+      type: ephemeral # Or persistent-claim for production
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}

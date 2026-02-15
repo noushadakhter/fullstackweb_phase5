@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: audit-service # Placeholder, replace with your actual image name
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80 # Default for FastAPI, but actual app port is 8000
+  targetPort: 8000
+
+ingress:
+  enabled: false
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+dapr:
+  enabled: true
+  appId: audit-service
+  appPort: 8000 # The port your FastAPI app runs on
+  appProtocol: http
+  annotations: {} # Additional Dapr annotations

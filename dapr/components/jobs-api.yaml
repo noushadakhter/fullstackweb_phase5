@@ -1,0 +1,13 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: scheduler
+spec:
+  type: jobs.scheduler
+  version: v1
+  metadata:
+    # No specific metadata needed for basic scheduler
+    # More advanced configuration might be added here later for specific providers
+  scopes:
+    - tasks-service # Tasks service will schedule jobs
+    - notification-service # Notifications service might need to schedule retry jobs

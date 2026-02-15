@@ -1,0 +1,15 @@
+# This file provides instructions to install the Strimzi operator.
+# The actual manifest is usually fetched directly.
+
+# To install Strimzi operator:
+# 1. Create a namespace for Kafka:
+#    kubectl create namespace kafka
+# 2. Apply the Strimzi installation manifest:
+#    kubectl apply -f https://strimzi.io/install/latest?namespace=kafka
+#
+# Alternatively, you can download the manifest and apply it:
+# curl -L https://strimzi.io/install/latest?namespace=kafka -o strimzi-operator-latest.yaml
+# kubectl apply -f strimzi-operator-latest.yaml -n kafka
+#
+# Verify Strimzi operator deployment:
+# kubectl get pods -n kafka

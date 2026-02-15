@@ -41,3 +41,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+dapr:
+  enabled: true
+  appId: {{ include "frontend.fullname" . }} # This will be rendered to frontend's fullname
+  appPort: 3000 # The port your Next.js app runs on
+  appProtocol: http
+  annotations: {} # Additional Dapr annotations

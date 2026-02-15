@@ -41,3 +41,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+dapr:
+  enabled: true
+  appId: {{ include "backend.fullname" . }} # This will be rendered to backend's fullname
+  appPort: 8000 # The port your FastAPI app runs on
+  appProtocol: http
+  annotations: {} # Additional Dapr annotations

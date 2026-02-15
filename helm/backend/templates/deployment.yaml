@@ -13,8 +13,18 @@ spec:
     metadata:
       {{- with .Values.podAnnotations }}
       annotations:
+        {{- if .Values.dapr.enabled }}
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "{{ .Values.dapr.appId }}"
+        dapr.io/app-port: "{{ .Values.dapr.appPort }}"
+        dapr.io/app-protocol: "{{ .Values.dapr.appProtocol }}"
+        {{- with .Values.dapr.annotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "backend.selectorLabels" . | nindent 8 }}
     spec:

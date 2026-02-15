@@ -1,8 +1,0 @@
-fastapi==0.109.0
-uvicorn==0.40.0 # Updated to be compatible with fastmcp
-sqlmodel==0.0.14
-alembic==1.13.1
-psycopg2-binary==2.9.9
-python-dotenv==1.2.1 # Updated to be compatible with fastmcp
-openai
-fastmcp

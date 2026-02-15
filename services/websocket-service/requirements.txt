@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+websockets # FastAPI's WebSocket dependency
+httpx # For Dapr API calls
+dapr-client # Optional, but can simplify Dapr interaction

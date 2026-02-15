@@ -1,0 +1,113 @@
+name: CD Deploy to OKE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+      - 'helm/**'
+      - 'k8s/**'
+  workflow_run: # Trigger after CI workflow completes successfully
+    workflows: ["CI Build and Push Docker Images"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for OCI authentication using OIDC
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # --- OCI Authentication and Kubeconfig Setup ---
+      - name: Configure OCI CLI
+        uses: oracle-actions/setup-oci-cli@v1.1.0 # Or similar action for OCI setup
+        with:
+          # Assumes OIDC authentication is set up in OCI for GitHub Actions
+          # See Oracle Cloud documentation for setting up Workload Identity / OIDC
+          # Required OCI environment variables or secrets for OIDC:
+          # OCI_REGION, OCI_TENANCY_ID, OCI_USER_ID or OCI_PRINCIPAL_FINGERPRINT, OCI_PRIVATE_KEY
+          # Or use API Key for simpler setup (less secure for production)
+          api-key-fingerprint: ${{ secrets.OCI_API_KEY_FINGERPRINT }}
+          api-key-private-key: ${{ secrets.OCI_API_KEY_PRIVATE_KEY }}
+          tenancy-id: ${{ secrets.OCI_TENANCY_ID }}
+          user-id: ${{ secrets.OCI_USER_ID }}
+          region: ${{ secrets.OCI_REGION }}
+
+      - name: Get OKE Cluster Kubeconfig
+        run: |
+          # Command to get kubeconfig for your OKE cluster
+          # Replace <cluster_ocid> with your OKE cluster OCID
+          # Replace <region> with your OCI region
+          oci ce cluster create-kubeconfig 
+            --cluster-id ${{ secrets.OKE_CLUSTER_OCID }} 
+            --file $GITHUB_WORKSPACE/kubeconfig 
+            --region ${{ secrets.OCI_REGION }} 
+            --token-version 2.0.0
+          export KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig
+          echo "KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig" >> $GITHUB_ENV
+
+      - name: Verify kubectl access
+        run: kubectl get nodes
+
+      # --- Install Dapr Control Plane ---
+      - name: Install Dapr Control Plane
+        run: |
+          helm repo add dapr https://dapr.github.io/helm-charts/
+          helm repo update
+          kubectl create namespace dapr-system --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install dapr dapr/dapr --namespace dapr-system --version 1.12.0
+
+      # --- Deploy Infrastructure Components (Strimzi Kafka, Redis, PostgreSQL) ---
+      - name: Deploy Infrastructure Components
+        run: |
+          kubectl create namespace kafka --dry-run=client -o yaml | kubectl apply -f -
+          # For actual strimzi install, you would install Strimzi operator using Helm or its official manifest:
+          # (as per k8s/infrastructure/strimzi-kafka/01-strimzi-operator.yaml)
+          # kubectl apply -f https://strimzi.io/install/latest?namespace=kafka -n kafka
+          # After operator is up, deploy the Kafka cluster:
+          # kubectl apply -f k8s/infrastructure/strimzi-kafka/02-kafka-cluster.yaml -n kafka
+
+          kubectl apply -f k8s/infrastructure/redis/redis-deployment.yaml
+          kubectl apply -f k8s/infrastructure/redis/redis-service.yaml
+          kubectl apply -f k8s/infrastructure/postgresql/postgres-pvc.yaml
+          kubectl apply -f k8s/infrastructure/postgresql/postgres-deployment.yaml
+          kubectl apply -f k8s/infrastructure/postgresql/postgres-service.yaml
+
+      # --- Deploy Dapr Components (PubSub, State, Secrets, Jobs API) ---
+      - name: Deploy Dapr Components
+        run: |
+          kubectl apply -f dapr/components/pubsub-kafka.yaml
+          kubectl apply -f dapr/components/secretstore-kubernetes.yaml
+          kubectl apply -f dapr/components/statestore-redis.yaml
+          kubectl apply -f dapr/components/jobs-api.yaml
+
+      # --- Deploy Application Helm Charts ---
+      - name: Deploy Frontend Helm Chart
+        run: helm upgrade --install frontend ./helm/frontend --namespace default # Adjust namespace if needed
+
+      - name: Deploy Backend Helm Chart
+        run: helm upgrade --install backend ./helm/backend --namespace default # Adjust namespace if needed
+
+      - name: Deploy Notification Service Helm Chart
+        run: helm upgrade --install notification-service ./helm/notification-service --namespace default # Adjust namespace if needed
+
+      - name: Deploy Audit Service Helm Chart
+        run: helm upgrade --install audit-service ./helm/audit-service --namespace default # Adjust namespace if needed
+
+      - name: Deploy WebSocket Service Helm Chart
+        run: helm upgrade --install websocket-service ./helm/websocket-service --namespace default # Adjust namespace if needed
+
+      - name: Deploy Recurring Task Service Helm Chart
+        run: helm upgrade --install recurring-task-service ./helm/recurring-task-service --namespace default # Adjust namespace if needed
+
+      # --- Deploy Ingress ---
+      - name: Deploy Ingress
+        run: kubectl apply -f k8s/application/ingress.yaml
